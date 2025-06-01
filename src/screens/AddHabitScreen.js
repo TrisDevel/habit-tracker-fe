@@ -9,6 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { habitApi } from "../services/api";
+import { getHabits, saveHabits } from "../utils/storage";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -35,14 +36,25 @@ const AddHabitScreen = ({ navigation }) => {
     }
 
     try {
+      const existingHabits = await getHabits();
+
+      const newId =
+        existingHabits.length > 0
+          ? existingHabits[existingHabits.length - 1].id + 1
+          : 1;
+
       const habitData = {
+        id: newId,
         name,
         description,
         schedule,
         completedDates: [],
       };
 
-      await habitApi.addHabit(habitData);
+      // await habitApi.addHabit(habitData);
+      const createHabit = [...existingHabits, habitData];
+      saveHabits(createHabit);
+      Alert.alert("Success", "Habit created successfully!");
       navigation.goBack();
     } catch (error) {
       Alert.alert("Error", "Failed to create habit. Please try again.");
