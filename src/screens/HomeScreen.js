@@ -9,14 +9,27 @@ import {
 } from "react-native";
 import { habitApi } from "../services/api";
 import HabitCard from "../components/HabitCard";
+import { getHabits } from "../utils/storage";
 
 const HomeScreen = ({ navigation }) => {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // const fetchHabits = async () => {
+  //   try {
+  //     const data = await habitApi.getAllHabits();
+  //     setHabits(data);
+  //   } catch (error) {
+  //     console.error("Error fetching habits:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchHabits = async () => {
+    setLoading(true);
     try {
-      const data = await habitApi.getAllHabits();
+      const data = await getHabits();
       setHabits(data);
     } catch (error) {
       console.error("Error fetching habits:", error);
@@ -25,6 +38,7 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Fetch habits when the component mounts
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       fetchHabits();

@@ -8,23 +8,60 @@ import {
   Alert,
 } from "react-native";
 import { updateHabit, deleteHabit } from "../services/api";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+import { getHabits, saveHabits } from "../utils/storage";
 
 const HabitDetailScreen = ({ route, navigation }) => {
   const { habitId } = route.params;
   const [habit, setHabit] = useState(null);
+
+  // useEffect(() => {
+  //   fetchHabitDetails();
+  // }, [fetchHabitDetails]);
+
   useEffect(() => {
     fetchHabitDetails();
-  }, [fetchHabitDetails]);
+  }, []);
+
+  // const fetchHabitDetails = async () => {
+  //   try {
+  //     const response = await updateHabit(habitId);
+  //     setHabit(response);
+  //   } catch (error) {
+  //     console.error("Error fetching habit details:", error);
+  //     Alert.alert("Error", "Failed to load habit details");
+  //   }
+  // };
 
   const fetchHabitDetails = async () => {
     try {
-      const response = await updateHabit(habitId);
-      setHabit(response);
+      const habits = await getHabits();
+      const foundhabit = habits.find((h) => h.id === habitId);
+      setHabit(foundhabit);
     } catch (error) {
       console.error("Error fetching habit details:", error);
       Alert.alert("Error", "Failed to load habit details");
     }
   };
+
+  // const handleDatePress = async (date) => {
+  //   try {
+  //     const updatedCompletedDates = habit.completedDates.includes(date)
+  //       ? habit.completedDates.filter((d) => d !== date)
+  //       : [...habit.completedDates, date];
+
+  //     const updatedHabit = {
+  //       ...habit,
+  //       completedDates: updatedCompletedDates,
+  //     };
+
+  //     await updateHabit(habitId, updatedHabit);
+  //     setHabit(updatedHabit);
+  //   } catch (error) {
+  //     console.error("Error updating habit:", error);
+  //     Alert.alert("Error", "Failed to update habit");
+  //   }
+  // };
 
   const handleDatePress = async (date) => {
     try {
@@ -37,7 +74,13 @@ const HabitDetailScreen = ({ route, navigation }) => {
         completedDates: updatedCompletedDates,
       };
 
-      await updateHabit(habitId, updatedHabit);
+      // Lưu lại vào storage
+      const habits = await getHabits();
+      const updatedHabits = habits.map((h) =>
+        h.id === habitId ? updatedHabit : h
+      );
+      await saveHabits(updatedHabits);
+
       setHabit(updatedHabit);
     } catch (error) {
       console.error("Error updating habit:", error);
