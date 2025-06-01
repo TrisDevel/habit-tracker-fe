@@ -12,15 +12,18 @@ export const getHabits = async () => {
     return JSON.parse(json);
   } else {
     // Chưa có dữ liệu → đọc từ file habits.json trong assets
-    const asset = Asset.fromModule(require("../../assets/habits.json"));
-    await asset.downloadAsync(); // Tải file nội bộ nếu cần
+    // const asset = Asset.fromModule(require("../../assets/habits.json"));
+    // await asset.downloadAsync();
 
-    const fileUri = asset.localUri; // Đường dẫn nội bộ tới file JSON
-    const content = await FileSystem.readAsStringAsync(fileUri); // đọc file như chuỗi
-    const parsed = JSON.parse(content); // chuyển thành object JS
+    // const fileUri = asset.localUri; // Đường dẫn nội bộ tới file JSON
+    // const content = await FileSystem.readAsStringAsync(fileUri); // đọc file như chuỗi
+    // const parsed = JSON.parse(content); // chuyển thành object JS
+    // await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); // lưu vào storage
+    // return parsed;
 
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); // lưu vào storage
-    return parsed;
+    const habits = require("../../assets/habits.json"); //đã có file habits.json trong assets
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(habits)); // lưu vào AsyncStorage
+    return habits; // trả về dữ liệu đã đọc
   }
 };
 

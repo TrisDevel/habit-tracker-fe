@@ -18,6 +18,6 @@
     "name": "Thiền",
     "description": "Thiền 15 phút mỗi sáng để giảm căng thẳng",
     "schedule": ["Sun", "Mon", "Wed", "Fri"],
-    "completedDates": []
+    "completedDates": ["2025-05-29"]
   }
 ]
