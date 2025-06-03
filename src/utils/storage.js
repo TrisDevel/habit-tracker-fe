@@ -30,3 +30,14 @@ export const getHabits = async () => {
 export const saveHabits = async (habits) => {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
 };
+
+export const updateHabit = async (updatedHabit) => {
+  const json = await AsyncStorage.getItem(STORAGE_KEY);
+  if (!json) return null;
+  const habits = JSON.parse(json);
+  const index = habits.findIndex((h) => h.id === updatedHabit.id);
+  if (index === -1) return null;
+  habits[index] = { ...habits[index], ...updatedHabit };
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+  return habits[index];
+};
