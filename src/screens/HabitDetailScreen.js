@@ -8,8 +8,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
-import { getHabits, saveHabits } from "../utils/storage";
+import { getHabits, saveHabits, updateHabit } from "../utils/storage";
 
 const HabitDetailScreen = ({ route, navigation }) => {
   const { habitId } = route.params;
@@ -88,6 +87,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
       },
     ]);
   };
+
 
   const handleDayToggle = (index) => {
     const newSchedule = [...editSchedule];
