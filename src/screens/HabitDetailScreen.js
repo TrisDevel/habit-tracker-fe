@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
+import { deleteHabit } from "../services/api";
 import { getHabits, saveHabits, updateHabit } from "../utils/storage";
 
 const HabitDetailScreen = ({ route, navigation }) => {
@@ -74,10 +75,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
-            const habits = await getHabits();
-            const updatedHabits = habits.filter((h) => h.id !== habitId);
-            await saveHabits(updatedHabits);
-            Alert.alert("Success", "Habit deleted successfully");
+            await deleteHabit(habitId);
             navigation.goBack();
           } catch (error) {
             console.error("Error deleting habit:", error);
@@ -87,7 +85,6 @@ const HabitDetailScreen = ({ route, navigation }) => {
       },
     ]);
   };
-
 
   const handleDayToggle = (index) => {
     const newSchedule = [...editSchedule];
