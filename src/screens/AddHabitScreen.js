@@ -49,8 +49,6 @@ const AddHabitScreen = ({ navigation }) => {
         description,
         schedule,
         completedDates: [],
-        notes: {},
-        photos: {}
       };
 
       // await habitApi.addHabit(habitData);
