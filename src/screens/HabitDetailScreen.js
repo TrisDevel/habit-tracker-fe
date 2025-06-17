@@ -11,7 +11,7 @@ import {
   Modal,
   Linking,
 } from "react-native";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 import { getHabits, saveHabits, updateHabit } from "../utils/storage";
 
 const HabitDetailScreen = ({ route, navigation }) => {
@@ -72,12 +72,12 @@ const HabitDetailScreen = ({ route, navigation }) => {
         completedDates: updatedCompletedDates,
         notes: {
           ...(habit.notes || {}),
-          [selectedDate]: note || existingNote
+          [selectedDate]: note || existingNote,
         },
         photos: {
           ...(habit.photos || {}),
-          [selectedDate]: photo || existingPhoto
-        }
+          [selectedDate]: photo || existingPhoto,
+        },
       };
 
       const habits = await getHabits();
@@ -103,22 +103,23 @@ const HabitDetailScreen = ({ route, navigation }) => {
   const pickImage = async () => {
     try {
       // Request permissions first
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log('Permission status:', status);
-      
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log("Permission status:", status);
+
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'Please allow access to your photo library to add photos.',
+          "Permission Required",
+          "Please allow access to your photo library to add photos.",
           [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Settings',
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Settings",
               onPress: () => {
                 // This will open the app settings
                 Linking.openSettings();
-              }
-            }
+              },
+            },
           ]
         );
         return;
@@ -132,23 +133,21 @@ const HabitDetailScreen = ({ route, navigation }) => {
         quality: 1,
       });
 
-      console.log('Image picker result:', result);
+      console.log("Image picker result:", result);
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedImage = result.assets[0];
-        console.log('Selected image:', selectedImage);
+        console.log("Selected image:", selectedImage);
         setPhoto(selectedImage.uri);
         Alert.alert("Success", "Photo added successfully!");
       } else {
-        console.log('No image selected or picker was canceled');
+        console.log("No image selected or picker was canceled");
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert(
-        'Error',
-        'Failed to pick image. Please try again.',
-        [{ text: 'OK' }]
-      );
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.", [
+        { text: "OK" },
+      ]);
     }
   };
 
@@ -182,7 +181,12 @@ const HabitDetailScreen = ({ route, navigation }) => {
 
   const handleUpdate = async () => {
     try {
-      const updatedHabit = { ...habit, name: editName, description: editDescription, schedule: editSchedule };
+      const updatedHabit = {
+        ...habit,
+        name: editName,
+        description: editDescription,
+        schedule: editSchedule,
+      };
       await updateHabit(updatedHabit);
       setHabit(updatedHabit);
       setIsEditing(false);
@@ -225,14 +229,24 @@ const HabitDetailScreen = ({ route, navigation }) => {
                 style={[styles.dateButton, isCompleted && styles.completedDate]}
                 onPress={() => handleDatePress(dateString)}
               >
-                <Text style={styles.dayText}>
+                <Text
+                  style={[styles.dayText, isCompleted && { color: "#fff" }]}
+                >
                   {date.toLocaleDateString("en-US", { weekday: "short" })}
                 </Text>
-                <Text style={styles.dateText}>{date.getDate()}</Text>
+                <Text
+                  style={[styles.dateText, isCompleted && { color: "#fff" }]}
+                >
+                  {date.getDate()}
+                </Text>
                 {isCompleted && (
                   <View style={styles.indicatorsContainer}>
-                    {hasNote && <View style={[styles.indicator, styles.noteIndicator]} />}
-                    {hasPhoto && <View style={[styles.indicator, styles.photoIndicator]} />}
+                    {hasNote && (
+                      <View style={[styles.indicator, styles.noteIndicator]} />
+                    )}
+                    {hasPhoto && (
+                      <View style={[styles.indicator, styles.photoIndicator]} />
+                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -301,43 +315,47 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <Text style={styles.sectionTitle}>Schedule</Text>
         <View style={styles.daysContainer}>
           {isEditing
-            ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-                <TouchableOpacity
-                  key={day}
-                  style={[
-                    styles.dayIndicator,
-                    editSchedule[index] && styles.activeDayIndicator,
-                  ]}
-                  onPress={() => handleDayToggle(index)}
-                >
-                  <Text
+            ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                (day, index) => (
+                  <TouchableOpacity
+                    key={day}
                     style={[
-                      styles.dayIndicatorText,
-                      editSchedule[index] && styles.activeDayIndicatorText,
-                    ]} 
+                      styles.dayIndicator,
+                      editSchedule[index] && styles.activeDayIndicator,
+                    ]}
+                    onPress={() => handleDayToggle(index)}
                   >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-                <View
-                  key={day}
-                  style={[
-                    styles.dayIndicator,
-                    habit.schedule[index] && styles.activeDayIndicator,
-                  ]}
-                >
-                  <Text
+                    <Text
+                      style={[
+                        styles.dayIndicatorText,
+                        editSchedule[index] && styles.activeDayIndicatorText,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              )
+            : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                (day, index) => (
+                  <View
+                    key={day}
                     style={[
-                      styles.dayIndicatorText,
-                      habit.schedule[index] && styles.activeDayIndicatorText,
+                      styles.dayIndicator,
+                      habit.schedule[index] && styles.activeDayIndicator,
                     ]}
                   >
-                    {day}
-                  </Text>
-                </View>
-              ))}
+                    <Text
+                      style={[
+                        styles.dayIndicatorText,
+                        habit.schedule[index] && styles.activeDayIndicatorText,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </View>
+                )
+              )}
         </View>
       </View>
 
@@ -354,7 +372,10 @@ const HabitDetailScreen = ({ route, navigation }) => {
           <Text style={styles.updateButtonText}>Save Changes</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.updateButton} onPress={() => setIsEditing(true)}>
+        <TouchableOpacity
+          style={styles.updateButton}
+          onPress={() => setIsEditing(true)}
+        >
           <Text style={styles.updateButtonText}>Update Habit</Text>
         </TouchableOpacity>
       )}
@@ -368,9 +389,9 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {selectedDate ? new Date(selectedDate).toLocaleDateString() : ''}
+              {selectedDate ? new Date(selectedDate).toLocaleDateString() : ""}
             </Text>
-            
+
             <TextInput
               style={[styles.input, styles.noteInput]}
               value={note}
@@ -381,7 +402,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
 
             <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
               <Text style={styles.photoButtonText}>
-                {photo ? 'Change Photo' : 'Add Photo'}
+                {photo ? "Change Photo" : "Add Photo"}
               </Text>
             </TouchableOpacity>
 
@@ -390,15 +411,15 @@ const HabitDetailScreen = ({ route, navigation }) => {
             )}
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowModal(false)}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.completeButton]} 
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.completeButton]}
                 onPress={handleComplete}
               >
                 <Text style={styles.modalButtonText}>Complete</Text>
@@ -531,49 +552,49 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 20,
-    width: '90%',
-    maxHeight: '80%',
+    width: "90%",
+    maxHeight: "80%",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    textAlign: 'center',
+    textAlign: "center",
   },
   noteInput: {
     height: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     marginBottom: 15,
   },
   photoButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 15,
   },
   photoButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   photoPreview: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
     marginBottom: 15,
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   modalButton: {
     flex: 1,
@@ -582,34 +603,34 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: '#ff5252',
+    backgroundColor: "#ff5252",
   },
   completeButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   modalButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
   indicatorsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 5,
   },
   indicator: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#ccc',
+    backgroundColor: "#ccc",
   },
   noteIndicator: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   photoIndicator: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   savedEntriesContainer: {
     padding: 16,
@@ -620,10 +641,10 @@ const styles = StyleSheet.create({
   },
   entryContainer: {
     marginBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 12,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -642,7 +663,7 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   entryPhoto: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
     marginTop: 8,

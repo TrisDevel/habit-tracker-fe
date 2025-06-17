@@ -10,6 +10,7 @@ import {
 import { habitApi } from "../services/api";
 import HabitCard from "../components/HabitCard";
 import { getHabits } from "../utils/storage";
+import MiniCalendarWidget from "../components/MiniCalenderWidget";
 
 const HomeScreen = ({ navigation }) => {
   const [habits, setHabits] = useState([]);
@@ -76,6 +77,7 @@ const HomeScreen = ({ navigation }) => {
       >
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
+      <MiniCalendarWidget habits={habits} />
     </View>
   );
 };
