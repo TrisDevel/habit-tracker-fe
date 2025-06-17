@@ -12,10 +12,11 @@ import {
   Linking,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { FontAwesome } from "@expo/vector-icons";
 import { getHabits, saveHabits, updateHabit } from "../utils/storage";
 
 const HabitDetailScreen = ({ route, navigation }) => {
-  const { habitId } = route.params;
+  const { habitId, onPinToggled } = route.params;
   const [habit, setHabit] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -46,6 +47,37 @@ const HabitDetailScreen = ({ route, navigation }) => {
     } catch (error) {
       console.error("Error fetching habit details:", error);
       Alert.alert("Error", "Failed to load habit details");
+    }
+  };
+
+  // Xử lý ghim/bỏ ghim thói quen
+  const handleTogglePin = async () => {
+    try {
+      // Cập nhật UI ngay lập tức
+      const updatedHabit = { ...habit, pinned: !habit.pinned };
+      setHabit(updatedHabit);
+
+      // Cập nhật trong storage
+      const habits = await getHabits();
+      const updatedHabits = habits.map((h) =>
+        h.id === habitId ? updatedHabit : h
+      );
+
+      await saveHabits(updatedHabits);
+
+      // Hiển thị thông báo
+      Alert.alert(
+        "Thành công",
+        updatedHabit.pinned ? "Thói quen đã được ghim" : "Đã bỏ ghim thói quen"
+      );
+
+      // Gọi callback nếu được truyền từ màn hình Home
+      if (route.params?.onPinToggled) {
+        route.params.onPinToggled(habitId);
+      }
+    } catch (error) {
+      console.error("Error updating pin status:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái ghim");
     }
   };
 
@@ -283,10 +315,20 @@ const HabitDetailScreen = ({ route, navigation }) => {
       </View>
     );
   };
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity style={styles.pinButton} onPress={handleTogglePin}>
+          <FontAwesome
+            name="thumb-tack"
+            size={20}
+            color={habit.pinned ? "#2196F3" : "#888"}
+            style={habit.pinned ? styles.pinnedIcon : {}}
+          />
+          <Text style={habit.pinned ? styles.pinnedText : styles.unpinnedText}>
+            {habit.pinned ? "Đã ghim" : "Ghim"}
+          </Text>
+        </TouchableOpacity>
         {isEditing ? (
           <>
             <TextInput
@@ -310,7 +352,6 @@ const HabitDetailScreen = ({ route, navigation }) => {
           </>
         )}
       </View>
-
       <View style={styles.scheduleSection}>
         <Text style={styles.sectionTitle}>Schedule</Text>
         <View style={styles.daysContainer}>
@@ -358,12 +399,10 @@ const HabitDetailScreen = ({ route, navigation }) => {
               )}
         </View>
       </View>
-
       <View style={styles.progressSection}>
         <Text style={styles.sectionTitle}>Progress</Text>
         {renderCalendar()}
       </View>
-
       <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
         <Text style={styles.deleteButtonText}>Delete Habit</Text>
       </TouchableOpacity>
@@ -379,7 +418,6 @@ const HabitDetailScreen = ({ route, navigation }) => {
           <Text style={styles.updateButtonText}>Update Habit</Text>
         </TouchableOpacity>
       )}
-
       <Modal
         visible={showModal}
         animationType="slide"
@@ -443,8 +481,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   header: {
+    flexDirection: "column",
     padding: 16,
     backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
     marginBottom: 16,
   },
   title: {
@@ -667,6 +708,25 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     marginTop: 8,
+  },
+  pinButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    padding: 8,
+    marginBottom: 8,
+  },
+  pinnedIcon: {
+    transform: [{ rotate: "45deg" }],
+  },
+  pinnedText: {
+    marginLeft: 8,
+    color: "#2196F3",
+    fontWeight: "bold",
+  },
+  unpinnedText: {
+    marginLeft: 8,
+    color: "#888",
   },
 });
 
