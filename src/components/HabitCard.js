@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { FontAwesome } from "@expo/vector-icons";
 
 const getLast7Days = () => {
   const days = [];
@@ -11,12 +12,27 @@ const getLast7Days = () => {
   }
   return days;
 };
-const HabitCard = ({ habit, onPress }) => {
+const HabitCard = ({ habit, onPress, onTogglePin }) => {
   const last7Days = getLast7Days();
-
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
-      <Text style={styles.title}>{habit.name}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>{habit.name}</Text>
+        <TouchableOpacity
+          style={styles.pinButton}
+          onPress={(e) => {
+            e.stopPropagation(); // Ngăn không cho sự kiện click lan ra ngoài
+            if (onTogglePin) onTogglePin();
+          }}
+        >
+          <FontAwesome
+            name="thumb-tack"
+            size={18}
+            color={habit.pinned ? "#2196F3" : "#888"}
+            style={habit.pinned ? styles.pinIcon : {}}
+          />
+        </TouchableOpacity>
+      </View>
       <Text style={styles.description}>{habit.description}</Text>
       <View style={styles.calendarRow}>
         {last7Days.map((date) => {
@@ -48,6 +64,21 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 10,
     elevation: 3,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  pinButton: {
+    padding: 8,
+    marginLeft: 5,
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  pinIcon: {
+    transform: [{ rotate: "45deg" }],
+    marginRight: 8,
   },
   title: {
     fontSize: 18,
