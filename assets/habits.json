@@ -4,20 +4,23 @@
     "name": "Tập thể dục",
     "description": "Tập 30 phút mỗi sáng để nâng cao sức khỏe",
     "schedule": ["Mon", "Wed", "Fri"],
-    "completedDates": ["2025-05-30", "2025-05-31"]
+    "completedDates": ["2025-05-30", "2025-05-31"],
+    "reminderTime": "08:00"
   },
   {
     "id": 2,
     "name": "Đọc sách",
     "description": "Đọc ít nhất 10 trang sách mỗi ngày",
     "schedule": ["Tue", "Thu", "Sat"],
-    "completedDates": ["2025-05-29"]
+    "completedDates": ["2025-05-29"],
+    "reminderTime": "10:00"
   },
   {
     "id": 3,
     "name": "Thiền",
     "description": "Thiền 15 phút mỗi sáng để giảm căng thẳng",
     "schedule": ["Sun", "Mon", "Wed", "Fri"],
-    "completedDates": ["2025-05-29"]
+    "completedDates": ["2025-05-29"],
+    "reminderTime": "12:00"
   }
 ]

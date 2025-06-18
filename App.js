@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { StatusBar } from "expo-status-bar";
@@ -9,9 +9,20 @@ import HabitDetailScreen from "./src/screens/HabitDetailScreen";
 import StatisticsScreen from "./src/screens/StatisticsScreen";
 import AuthScreen from "./src/screens/AuthScreen";
 
+import * as Notifications from "expo-notifications";
+import * as Permissions from "expo-permissions";
+
 const Stack = createStackNavigator();
 
 export default function App() {
+  useEffect(() => {
+    (async () => {
+      const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
+      if (status !== "granted") {
+        await Permissions.askAsync(Permissions.NOTIFICATIONS);
+      }
+    })();
+  }, []);
   return (
     <NavigationContainer>
       <StatusBar style="auto" />

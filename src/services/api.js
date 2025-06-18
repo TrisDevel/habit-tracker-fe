@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://172.20.10.5:5000/api";
+const API_URL = "http://192.168.183.86:5000/api";
 
 // Create axios instance with better config
 const api = axios.create({
@@ -191,7 +191,5 @@ export const habitApi = {
     }
   },
 };
-
-
 
 export default api;
