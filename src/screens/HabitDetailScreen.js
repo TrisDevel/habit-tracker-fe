@@ -13,10 +13,12 @@ import {
   Linking,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Notifications from "expo-notifications";
 import { FontAwesome } from "@expo/vector-icons";
 import { getHabits, saveHabits, updateHabit } from "../utils/storage";
 import { habitApi } from "../services/api";
 
+import DateTimePicker from "@react-native-community/datetimepicker";
 const HabitDetailScreen = ({ route, navigation }) => {
   const { habitId, onPinToggled } = route.params;
   const [habit, setHabit] = useState(null);
@@ -29,6 +31,8 @@ const HabitDetailScreen = ({ route, navigation }) => {
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [reminderTime, setReminderTime] = useState(habit?.reminderTime || null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   useEffect(() => {
     fetchHabitDetails();
@@ -39,6 +43,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
       setEditName(habit.name);
       setEditDescription(habit.description);
       setEditSchedule(habit.schedule);
+      setReminderTime(habit.reminderTime || null);
     }
   }, [habit]);
 
@@ -97,6 +102,50 @@ const HabitDetailScreen = ({ route, navigation }) => {
       Alert.alert("Lỗi", "Không thể cập nhật trạng thái ghim");
     }
   };
+
+  // Đặt notification lặp lại mỗi ngày
+  const scheduleReminder = async (habitName, time) => {
+    if (!time) return;
+    const [hour, minute] = time.split(":").map(Number);
+    await Notifications.cancelAllScheduledNotificationsAsync(); // Xoá notification cũ (nếu muốn chỉ 1 notification mỗi habit, cần lưu id notification)
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Nhắc nhở: ${habitName}`,
+        body: `Đến giờ thực hiện thói quen: ${habitName}`,
+      },
+      trigger: {
+        hour,
+        minute,
+        repeats: true,
+      },
+    });
+  };
+
+  // Khi chọn giờ nhắc nhở
+  const handleTimePicked = async (event, selectedDate) => {
+    setShowTimePicker(false);
+    if (selectedDate) {
+      const hours = selectedDate.getHours().toString().padStart(2, "0");
+      const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
+      const timeString = `${hours}:${minutes}`;
+      setReminderTime(timeString);
+
+      // Lưu reminderTime vào habit
+      const updatedHabit = { ...habit, reminderTime: timeString };
+      const habits = await getHabits();
+      const updatedHabits = habits.map((h) =>
+        h.id === habitId ? updatedHabit : h
+      );
+      await saveHabits(updatedHabits);
+      setHabit(updatedHabit);
+
+      // Đặt notification
+      await scheduleReminder(habit.name, timeString);
+
+      Alert.alert("Thành công", `Đã đặt nhắc nhở lúc ${timeString}`);
+    }
+  };
+
   const handleDatePress = async (date) => {
     // Set selected date and show modal with existing note/photo if any
     setSelectedDate(date);
@@ -821,6 +870,27 @@ const styles = StyleSheet.create({
   unpinnedText: {
     marginLeft: 8,
     color: "#888",
+  },
+  reminderSection: {
+    backgroundColor: "#fff",
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: "column",
+    alignItems: "flex-start",
+  },
+  reminderButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e8f5e9",
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  reminderButtonText: {
+    marginLeft: 8,
+    color: "#388e3c",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 
