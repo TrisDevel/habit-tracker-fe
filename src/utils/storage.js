@@ -4,6 +4,35 @@ import { Asset } from "expo-asset";
 
 const STORAGE_KEY = "HABITS";
 
+// Store habits locally for offline access
+export const cacheHabits = async (habits) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+  } catch (error) {
+    console.error("Error caching habits:", error);
+  }
+};
+
+// Get cached habits
+export const getCachedHabits = async () => {
+  try {
+    const json = await AsyncStorage.getItem(STORAGE_KEY);
+    return json ? JSON.parse(json) : [];
+  } catch (error) {
+    console.error("Error getting cached habits:", error);
+    return [];
+  }
+};
+
+// Clear habit cache
+export const clearHabitCache = async () => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error("Error clearing habit cache:", error);
+  }
+};
+
 export const getHabits = async () => {
   const json = await AsyncStorage.getItem(STORAGE_KEY);
 

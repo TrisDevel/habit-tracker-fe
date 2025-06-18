@@ -7,9 +7,9 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { habitApi } from "../services/api";
-import { getHabits, saveHabits } from "../utils/storage";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -17,6 +17,7 @@ const AddHabitScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [schedule, setSchedule] = useState(Array(7).fill(false));
+  const [loading, setLoading] = useState(false);
 
   const toggleDay = (index) => {
     const newSchedule = [...schedule];
@@ -36,15 +37,8 @@ const AddHabitScreen = ({ navigation }) => {
     }
 
     try {
-      const existingHabits = await getHabits();
-
-      const newId =
-        existingHabits.length > 0
-          ? existingHabits[existingHabits.length - 1].id + 1
-          : 1;
-
+      setLoading(true);
       const habitData = {
-        id: newId,
         name,
         description,
         schedule,
@@ -53,16 +47,24 @@ const AddHabitScreen = ({ navigation }) => {
         photos: {}
       };
 
-      // await habitApi.addHabit(habitData);
-      const createHabit = [...existingHabits, habitData];
-      saveHabits(createHabit);
+      await habitApi.addHabit(habitData);
       Alert.alert("Success", "Habit created successfully!");
       navigation.goBack();
     } catch (error) {
       Alert.alert("Error", "Failed to create habit. Please try again.");
       console.error("Error creating habit:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -179,6 +181,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

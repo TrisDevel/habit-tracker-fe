@@ -15,54 +15,45 @@ import MiniCalendarWidget from "../components/MiniCalenderWidget";
 const HomeScreen = ({ navigation }) => {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Xử lý khi người dùng ghim/bỏ ghim thói quen
+  // Xử lý ghim/bỏ ghim thói quen
   const handleTogglePin = async (habitId) => {
-    // Cập nhật UI ngay lập tức
-    const updatedHabits = habits.map((habit) =>
-      habit.id === habitId ? { ...habit, pinned: !habit.pinned } : habit
-    );
-
-    setHabits(updatedHabits);
-
-    // Lưu lại trạng thái đã cập nhật
     try {
+      const updatedHabits = habits.map((habit) =>
+        habit._id === habitId ? { ...habit, pinned: !habit.pinned } : habit
+      );
+      setHabits(updatedHabits);
       await saveHabits(updatedHabits);
     } catch (error) {
       console.error("Error updating pin status:", error);
     }
   };
 
-  // const fetchHabits = async () => {
-  //   try {
-  //     const data = await habitApi.getAllHabits();
-  //     setHabits(data);
-  //   } catch (error) {
-  //     console.error("Error fetching habits:", error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  const fetchHabits = async (showFullLoading = true) => {
+    if (showFullLoading) setLoading(true);
+    setError(null);
 
-  const fetchHabits = async () => {
-    setLoading(true);
     try {
-      const data = await getHabits();
+      const data = await habitApi.getAllHabits();
       // Đảm bảo tất cả thói quen đều có thuộc tính pinned
-      const habitsWithPinnedProperty = data.map((habit) => ({
+      const habitsWithPinned = data.map((habit) => ({
         ...habit,
         pinned: habit.pinned || false, // Thêm thuộc tính pinned nếu chưa có
       }));
-
-      // Lưu lại dữ liệu đã cập nhật
-      await saveHabits(habitsWithPinnedProperty);
-
-      setHabits(habitsWithPinnedProperty);
+      setHabits(habitsWithPinned);
     } catch (error) {
-      console.error("Error fetching habits:", error);
+      setError(error.toString());
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchHabits(false);
   };
 
   // Fetch habits when the component mounts
@@ -78,21 +69,14 @@ const HomeScreen = ({ navigation }) => {
       habit={item}
       onPress={() =>
         navigation.navigate("HabitDetail", {
-          habitId: item.id,
+          habitId: item._id || item.id,
           onPinToggled: handleTogglePin,
         })
       }
-      onTogglePin={() => handleTogglePin(item.id)}
+      onTogglePin={() => handleTogglePin(item._id || item.id)}
     />
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-      </View>
-    );
-  }
   // Sắp xếp thói quen: đưa những thói quen được ghim lên đầu danh sách
   const sortedHabits = [...habits].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1; // a được ghim, b không -> a lên đầu
@@ -102,12 +86,36 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={sortedHabits}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+          <Text style={styles.loadingText}>Loading habits...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchHabits()}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={sortedHabits}
+          renderItem={renderItem}
+          keyExtractor={(item) => (item._id || item.id).toString()}
+          contentContainerStyle={styles.listContainer}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          // Add performance optimizations
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+        />
+      )}
+
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => navigation.navigate("AddHabit")}
@@ -132,6 +140,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
+  },
   addButton: {
     position: "absolute",
     right: 20,
@@ -152,6 +165,25 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: "#fff",
     marginTop: -2,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    color: "red",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  retryButton: {
+    padding: 10,
+    backgroundColor: "#4CAF50",
+    borderRadius: 5,
+  },
+  retryText: {
+    color: "white",
   },
 });
 

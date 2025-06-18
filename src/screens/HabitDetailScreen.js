@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   TextInput,
+  ActivityIndicator,
   Image,
   Modal,
   Linking,
@@ -14,6 +15,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome } from "@expo/vector-icons";
 import { getHabits, saveHabits, updateHabit } from "../utils/storage";
+import { habitApi } from "../services/api";
 
 const HabitDetailScreen = ({ route, navigation }) => {
   const { habitId, onPinToggled } = route.params;
@@ -22,6 +24,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editSchedule, setEditSchedule] = useState([]);
+  const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState(null);
@@ -41,13 +44,27 @@ const HabitDetailScreen = ({ route, navigation }) => {
 
   const fetchHabitDetails = async () => {
     try {
-      const habits = await getHabits();
-      const foundhabit = habits.find((h) => h.id === habitId);
-      setHabit(foundhabit);
+      const habit = await habitApi.getHabitById(habitId);
+      setHabit(habit);
     } catch (error) {
       console.error("Error fetching habit details:", error);
-      Alert.alert("Error", "Failed to load habit details");
+      setError(error.toString());
+      Alert.alert("Error", "Failed to load habit details. Please try again.", [
+        {
+          text: "Retry",
+          onPress: () => fetchHabitDetails(),
+        },
+        {
+          text: "Go Back",
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    fetchHabitDetails();
   };
 
   // Helper to get time of day
@@ -88,25 +105,22 @@ const HabitDetailScreen = ({ route, navigation }) => {
       Alert.alert("Lỗi", "Không thể cập nhật trạng thái ghim");
     }
   };
-
   const handleDatePress = async (date) => {
+    // Set selected date and show modal with existing note/photo if any
     setSelectedDate(date);
     setNote(habit.notes?.[date] || "");
-    setPhoto(habit.photos?.[date] || null);
+    setPhoto(habit.photos?.[date]);
     setShowModal(true);
   };
 
   const handleComplete = async () => {
     try {
-      // Always add the date to completedDates if it's not already there
-      const updatedCompletedDates = habit.completedDates.includes(selectedDate)
-        ? habit.completedDates
-        : [...habit.completedDates, selectedDate];
+      if (!selectedDate) {
+        Alert.alert("Error", "No date selected");
+        return;
+      }
 
-      // Preserve existing notes and photos if they exist
-      const existingNote = habit.notes?.[selectedDate] || "";
-      const existingPhoto = habit.photos?.[selectedDate] || null;
-
+      // Create updated habit data
     try {
       let updatedCompletedDates, updatedCompletionTimes;
       if (habit.completedDates.includes(date)) {
@@ -122,35 +136,48 @@ const HabitDetailScreen = ({ route, navigation }) => {
       }
       const updatedHabit = {
         ...habit,
-        completedDates: updatedCompletedDates,
         completionTimes: updatedCompletionTimes,
       };
         notes: {
           ...(habit.notes || {}),
-          [selectedDate]: note || existingNote,
+          [selectedDate]: note || undefined, // Only add if note exists
         },
         photos: {
           ...(habit.photos || {}),
-          [selectedDate]: photo || existingPhoto,
+          [selectedDate]: photo || undefined, // Only add if photo exists
         },
+        completedDates: habit.completedDates.includes(selectedDate)
+          ? habit.completedDates.filter((d) => d !== selectedDate)
+          : [...habit.completedDates, selectedDate],
       };
 
-      const habits = await getHabits();
-      const updatedHabits = habits.map((h) =>
-        h.id === habitId ? updatedHabit : h
-      );
-      await saveHabits(updatedHabits);
-      setHabit(updatedHabit);
+      console.log("Sending update:", {
+        habitId: habit._id,
+        updatedData: updatedHabit,
+      });
+
+      // Update in backend
+      const response = await habitApi.updateHabit(updatedHabit);
+
+      // Verify response
+      if (!response) throw new Error("No response from server");
+
+      console.log("Update response:", response);
+
+      // Update local state with response data
+      setHabit(response);
+
+      // Reset form
+      setNote("");
+      setPhoto(null);
+      setSelectedDate(null);
       setShowModal(false);
 
-      // Show success message
-      let message = "Habit marked as complete";
-      if (note) message += " with a note";
-      if (photo) message += " and a photo";
-      Alert.alert("Success", message);
+      // Fetch fresh data
+      await fetchHabitDetails();
     } catch (error) {
       console.error("Error updating habit:", error);
-      Alert.alert("Error", "Failed to update habit");
+      Alert.alert("Error", "Failed to save changes. Please try again.");
     }
   };
 
@@ -213,9 +240,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
-            const habits = await getHabits();
-            const updatedHabits = habits.filter((h) => h.id !== habitId);
-            await saveHabits(updatedHabits);
+            await habitApi.deleteHabit(habitId);
             Alert.alert("Success", "Habit deleted successfully");
             navigation.goBack();
           } catch (error) {
@@ -246,8 +271,8 @@ const HabitDetailScreen = ({ route, navigation }) => {
         schedule: editSchedule,
      ,
       };
-      await updateHabit(updatedHabit);
-      setHabit(updatedHabit);
+      const response = await habitApi.updateHabit(updatedHabit);
+      setHabit(response);
       setIsEditing(false);
       Alert.alert("Success", "Habit updated successfully");
     } catch (error) {
@@ -255,6 +280,26 @@ const HabitDetailScreen = ({ route, navigation }) => {
       Alert.alert("Error", "Failed to update habit");
     }
   };
+
+  const handleViewStatistics = () => {
+    if (!habit?._id) return;
+
+    navigation.navigate("Statistics", {
+      habitId: habit._id,
+      habitName: habit.name,
+    });
+  };
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const getCompletionTimeStats = () => {
     if (!habit.completionTimes) return null;
@@ -278,7 +323,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
   if (!habit) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#4CAF50" />
       </View>
     );
   }
@@ -291,6 +336,12 @@ const HabitDetailScreen = ({ route, navigation }) => {
       date.setDate(today.getDate() - i);
       dates.push(date);
     }
+
+    console.log("Current habit data:", {
+      completedDates: habit.completedDates,
+      notes: habit.notes,
+      photos: habit.photos,
+    });
 
     return (
       <View>
@@ -453,6 +504,15 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <Text style={styles.sectionTitle}>Progress</Text>
         {renderCalendar()}
       </View>
+
+      <TouchableOpacity
+        style={[styles.statsButton, !habit && styles.disabledButton]}
+        onPress={handleViewStatistics}
+        disabled={!habit}
+      >
+        <Text style={styles.statsButtonText}>View Statistics</Text>
+      </TouchableOpacity>
+
       {getCompletionTimeStats() && (
         <View style={styles.statsContainer}>
           <Text style={styles.statsText}>{getCompletionTimeStats()}</Text>
@@ -645,6 +705,41 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     backgroundColor: "#fff",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  retryButton: {
+    padding: 12,
+    backgroundColor: "#2196F3",
+    borderRadius: 8,
+  },
+  retryText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  statsButton: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: "#4CAF50",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  statsButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   modalContainer: {
     flex: 1,
