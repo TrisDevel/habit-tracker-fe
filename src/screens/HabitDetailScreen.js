@@ -388,7 +388,10 @@ const HabitDetailScreen = ({ route, navigation }) => {
         {/* Display saved entries with separate ScrollView */}
         <View style={styles.savedEntriesContainer}>
           <Text style={styles.sectionTitle}>Note/Photo</Text>
-          <ScrollView style={styles.recentEntriesScroll}>
+          <ScrollView
+            style={styles.recentEntriesScroll}
+            contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
+          >
             {dates.map((date) => {
               const dateString = date.toISOString().split("T")[0];
               const isCompleted = habit.completedDates.includes(dateString);
@@ -402,7 +405,11 @@ const HabitDetailScreen = ({ route, navigation }) => {
                   <Text style={styles.entryDate}>
                     {new Date(dateString).toLocaleDateString()}
                   </Text>
-                  {note && <Text style={styles.entryNote}>{note}</Text>}
+                  {note && (
+                    <ScrollView horizontal={false} style={{ maxHeight: 120 }}>
+                      <Text style={styles.entryNote}>{note}</Text>
+                    </ScrollView>
+                  )}
                   {photo && (
                     <Image source={{ uri: photo }} style={styles.entryPhoto} />
                   )}
@@ -539,11 +546,12 @@ const HabitDetailScreen = ({ route, navigation }) => {
             </Text>
 
             <TextInput
-              style={[styles.input, styles.noteInput]}
+              style={[styles.input, styles.noteInput, { maxHeight: 150 }]}
               value={note}
               onChangeText={setNote}
               placeholder="Add a note..."
               multiline
+              scrollEnabled={true}
             />
 
             <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
@@ -667,7 +675,8 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   deleteButton: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginVertical: 8, // giảm khoảng cách dọc
     padding: 16,
     backgroundColor: "#ff5252",
     borderRadius: 8,
@@ -679,7 +688,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   updateButton: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginVertical: 8, // giảm khoảng cách dọc
     padding: 16,
     backgroundColor: "#2196F3",
     borderRadius: 8,
@@ -720,7 +730,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   statsButton: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginVertical: 8, // giảm khoảng cách dọc
     padding: 16,
     backgroundColor: "#4CAF50",
     borderRadius: 8,
