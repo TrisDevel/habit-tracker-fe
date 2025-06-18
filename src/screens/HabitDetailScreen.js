@@ -42,24 +42,38 @@ const HabitDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  // Helper to get time of day
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "morning";
+    if (hour < 18) return "afternoon";
+    return "evening";
+  };
+
   const handleDatePress = async (date) => {
     try {
-      const updatedCompletedDates = habit.completedDates.includes(date)
-        ? habit.completedDates.filter((d) => d !== date)
-        : [...habit.completedDates, date];
-
+      let updatedCompletedDates, updatedCompletionTimes;
+      if (habit.completedDates.includes(date)) {
+        updatedCompletedDates = habit.completedDates.filter((d) => d !== date);
+        updatedCompletionTimes = { ...habit.completionTimes };
+        delete updatedCompletionTimes[date];
+      } else {
+        updatedCompletedDates = [...habit.completedDates, date];
+        updatedCompletionTimes = {
+          ...habit.completionTimes,
+          [date]: getTimeOfDay(),
+        };
+      }
       const updatedHabit = {
         ...habit,
         completedDates: updatedCompletedDates,
+        completionTimes: updatedCompletionTimes,
       };
-
-      // Lưu lại vào storage
       const habits = await getHabits();
       const updatedHabits = habits.map((h) =>
         h.id === habitId ? updatedHabit : h
       );
       await saveHabits(updatedHabits);
-
       setHabit(updatedHabit);
     } catch (error) {
       console.error("Error updating habit:", error);
@@ -94,7 +108,12 @@ const HabitDetailScreen = ({ route, navigation }) => {
 
   const handleUpdate = async () => {
     try {
-      const updatedHabit = { ...habit, name: editName, description: editDescription, schedule: editSchedule };
+      const updatedHabit = {
+        ...habit,
+        name: editName,
+        description: editDescription,
+        schedule: editSchedule,
+      };
       await updateHabit(updatedHabit);
       setHabit(updatedHabit);
       setIsEditing(false);
@@ -103,6 +122,25 @@ const HabitDetailScreen = ({ route, navigation }) => {
       console.error("Error updating habit:", error);
       Alert.alert("Error", "Failed to update habit");
     }
+  };
+
+  const getCompletionTimeStats = () => {
+    if (!habit.completionTimes) return null;
+    const counts = { morning: 0, afternoon: 0, evening: 0 };
+    Object.values(habit.completionTimes).forEach((t) => {
+      if (counts[t] !== undefined) counts[t]++;
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total === 0) return null;
+    const maxTime = Object.keys(counts).reduce((a, b) =>
+      counts[a] > counts[b] ? a : b
+    );
+    const percent = Math.round((counts[maxTime] / total) * 100);
+    let label = "";
+    if (maxTime === "morning") label = "morning";
+    else if (maxTime === "afternoon") label = "afternoon";
+    else label = "evening";
+    return `You usually complete at ${label} (${percent}%)`;
   };
 
   if (!habit) {
@@ -176,43 +214,47 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <Text style={styles.sectionTitle}>Schedule</Text>
         <View style={styles.daysContainer}>
           {isEditing
-            ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-                <TouchableOpacity
-                  key={day}
-                  style={[
-                    styles.dayIndicator,
-                    editSchedule[index] && styles.activeDayIndicator,
-                  ]}
-                  onPress={() => handleDayToggle(index)}
-                >
-                  <Text
+            ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                (day, index) => (
+                  <TouchableOpacity
+                    key={day}
                     style={[
-                      styles.dayIndicatorText,
-                      editSchedule[index] && styles.activeDayIndicatorText,
+                      styles.dayIndicator,
+                      editSchedule[index] && styles.activeDayIndicator,
+                    ]}
+                    onPress={() => handleDayToggle(index)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayIndicatorText,
+                        editSchedule[index] && styles.activeDayIndicatorText,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              )
+            : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                (day, index) => (
+                  <View
+                    key={day}
+                    style={[
+                      styles.dayIndicator,
+                      habit.schedule[index] && styles.activeDayIndicator,
                     ]}
                   >
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-                <View
-                  key={day}
-                  style={[
-                    styles.dayIndicator,
-                    habit.schedule[index] && styles.activeDayIndicator,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayIndicatorText,
-                      habit.schedule[index] && styles.activeDayIndicatorText,
-                    ]}
-                  >
-                    {day}
-                  </Text>
-                </View>
-              ))}
+                    <Text
+                      style={[
+                        styles.dayIndicatorText,
+                        habit.schedule[index] && styles.activeDayIndicatorText,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </View>
+                )
+              )}
         </View>
       </View>
 
@@ -220,6 +262,11 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <Text style={styles.sectionTitle}>Progress</Text>
         {renderCalendar()}
       </View>
+      {getCompletionTimeStats() && (
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsText}>{getCompletionTimeStats()}</Text>
+        </View>
+      )}
 
       <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
         <Text style={styles.deleteButtonText}>Delete Habit</Text>
@@ -229,7 +276,10 @@ const HabitDetailScreen = ({ route, navigation }) => {
           <Text style={styles.updateButtonText}>Save Changes</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.updateButton} onPress={() => setIsEditing(true)}>
+        <TouchableOpacity
+          style={styles.updateButton}
+          onPress={() => setIsEditing(true)}
+        >
           <Text style={styles.updateButtonText}>Update Habit</Text>
         </TouchableOpacity>
       )}
@@ -354,6 +404,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     backgroundColor: "#fff",
+  },
+  statsContainer: {
+    backgroundColor: "#fffbe6",
+    padding: 12,
+    margin: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  statsText: {
+    color: "#b8860b",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 
