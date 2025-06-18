@@ -7,17 +7,25 @@ import {
   ScrollView,
   Alert,
   TextInput,
+  Image,
+  Modal,
+  Linking,
 } from "react-native";
-import { deleteHabit } from "../services/api";
+import * as ImagePicker from "expo-image-picker";
+import { FontAwesome } from "@expo/vector-icons";
 import { getHabits, saveHabits, updateHabit } from "../utils/storage";
 
 const HabitDetailScreen = ({ route, navigation }) => {
-  const { habitId } = route.params;
+  const { habitId, onPinToggled } = route.params;
   const [habit, setHabit] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editSchedule, setEditSchedule] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetchHabitDetails();
@@ -50,7 +58,55 @@ const HabitDetailScreen = ({ route, navigation }) => {
     return "evening";
   };
 
+  // Xử lý ghim/bỏ ghim thói quen
+  const handleTogglePin = async () => {
+    try {
+      // Cập nhật UI ngay lập tức
+      const updatedHabit = { ...habit, pinned: !habit.pinned };
+      setHabit(updatedHabit);
+
+      // Cập nhật trong storage
+      const habits = await getHabits();
+      const updatedHabits = habits.map((h) =>
+        h.id === habitId ? updatedHabit : h
+      );
+
+      await saveHabits(updatedHabits);
+
+      // Hiển thị thông báo
+      Alert.alert(
+        "Thành công",
+        updatedHabit.pinned ? "Thói quen đã được ghim" : "Đã bỏ ghim thói quen"
+      );
+
+      // Gọi callback nếu được truyền từ màn hình Home
+      if (route.params?.onPinToggled) {
+        route.params.onPinToggled(habitId);
+      }
+    } catch (error) {
+      console.error("Error updating pin status:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật trạng thái ghim");
+    }
+  };
+
   const handleDatePress = async (date) => {
+    setSelectedDate(date);
+    setNote(habit.notes?.[date] || "");
+    setPhoto(habit.photos?.[date] || null);
+    setShowModal(true);
+  };
+
+  const handleComplete = async () => {
+    try {
+      // Always add the date to completedDates if it's not already there
+      const updatedCompletedDates = habit.completedDates.includes(selectedDate)
+        ? habit.completedDates
+        : [...habit.completedDates, selectedDate];
+
+      // Preserve existing notes and photos if they exist
+      const existingNote = habit.notes?.[selectedDate] || "";
+      const existingPhoto = habit.photos?.[selectedDate] || null;
+
     try {
       let updatedCompletedDates, updatedCompletionTimes;
       if (habit.completedDates.includes(date)) {
@@ -69,15 +125,83 @@ const HabitDetailScreen = ({ route, navigation }) => {
         completedDates: updatedCompletedDates,
         completionTimes: updatedCompletionTimes,
       };
+        notes: {
+          ...(habit.notes || {}),
+          [selectedDate]: note || existingNote,
+        },
+        photos: {
+          ...(habit.photos || {}),
+          [selectedDate]: photo || existingPhoto,
+        },
+      };
+
       const habits = await getHabits();
       const updatedHabits = habits.map((h) =>
         h.id === habitId ? updatedHabit : h
       );
       await saveHabits(updatedHabits);
       setHabit(updatedHabit);
+      setShowModal(false);
+
+      // Show success message
+      let message = "Habit marked as complete";
+      if (note) message += " with a note";
+      if (photo) message += " and a photo";
+      Alert.alert("Success", message);
     } catch (error) {
       console.error("Error updating habit:", error);
       Alert.alert("Error", "Failed to update habit");
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      // Request permissions first
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log("Permission status:", status);
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Please allow access to your photo library to add photos.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Settings",
+              onPress: () => {
+                // This will open the app settings
+                Linking.openSettings();
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      console.log("Image picker result:", result);
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        console.log("Selected image:", selectedImage);
+        setPhoto(selectedImage.uri);
+        Alert.alert("Success", "Photo added successfully!");
+      } else {
+        console.log("No image selected or picker was canceled");
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.", [
+        { text: "OK" },
+      ]);
     }
   };
 
@@ -89,7 +213,10 @@ const HabitDetailScreen = ({ route, navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteHabit(habitId);
+            const habits = await getHabits();
+            const updatedHabits = habits.filter((h) => h.id !== habitId);
+            await saveHabits(updatedHabits);
+            Alert.alert("Success", "Habit deleted successfully");
             navigation.goBack();
           } catch (error) {
             console.error("Error deleting habit:", error);
@@ -109,10 +236,15 @@ const HabitDetailScreen = ({ route, navigation }) => {
   const handleUpdate = async () => {
     try {
       const updatedHabit = {
+       
         ...habit,
+       
         name: editName,
+       
         description: editDescription,
+       
         schedule: editSchedule,
+     ,
       };
       await updateHabit(updatedHabit);
       setHabit(updatedHabit);
@@ -161,31 +293,88 @@ const HabitDetailScreen = ({ route, navigation }) => {
     }
 
     return (
-      <View style={styles.calendarContainer}>
-        {dates.map((date) => {
-          const dateString = date.toISOString().split("T")[0];
-          const isCompleted = habit.completedDates.includes(dateString);
+      <View>
+        <View style={styles.calendarContainer}>
+          {dates.map((date) => {
+            const dateString = date.toISOString().split("T")[0];
+            const isCompleted = habit.completedDates.includes(dateString);
+            const hasNote = habit.notes?.[dateString];
+            const hasPhoto = habit.photos?.[dateString];
 
-          return (
-            <TouchableOpacity
-              key={dateString}
-              style={[styles.dateButton, isCompleted && styles.completedDate]}
-              onPress={() => handleDatePress(dateString)}
-            >
-              <Text style={styles.dayText}>
-                {date.toLocaleDateString("en-US", { weekday: "short" })}
-              </Text>
-              <Text style={styles.dateText}>{date.getDate()}</Text>
-            </TouchableOpacity>
-          );
-        })}
+            return (
+              <TouchableOpacity
+                key={dateString}
+                style={[styles.dateButton, isCompleted && styles.completedDate]}
+                onPress={() => handleDatePress(dateString)}
+              >
+                <Text
+                  style={[styles.dayText, isCompleted && { color: "#fff" }]}
+                >
+                  {date.toLocaleDateString("en-US", { weekday: "short" })}
+                </Text>
+                <Text
+                  style={[styles.dateText, isCompleted && { color: "#fff" }]}
+                >
+                  {date.getDate()}
+                </Text>
+                {isCompleted && (
+                  <View style={styles.indicatorsContainer}>
+                    {hasNote && (
+                      <View style={[styles.indicator, styles.noteIndicator]} />
+                    )}
+                    {hasPhoto && (
+                      <View style={[styles.indicator, styles.photoIndicator]} />
+                    )}
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Display saved entries with separate ScrollView */}
+        <View style={styles.savedEntriesContainer}>
+          <Text style={styles.sectionTitle}>Note/Photo</Text>
+          <ScrollView style={styles.recentEntriesScroll}>
+            {dates.map((date) => {
+              const dateString = date.toISOString().split("T")[0];
+              const isCompleted = habit.completedDates.includes(dateString);
+              const note = habit.notes?.[dateString];
+              const photo = habit.photos?.[dateString];
+
+              if (!isCompleted) return null;
+
+              return (
+                <View key={dateString} style={styles.entryContainer}>
+                  <Text style={styles.entryDate}>
+                    {new Date(dateString).toLocaleDateString()}
+                  </Text>
+                  {note && <Text style={styles.entryNote}>{note}</Text>}
+                  {photo && (
+                    <Image source={{ uri: photo }} style={styles.entryPhoto} />
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
     );
   };
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity style={styles.pinButton} onPress={handleTogglePin}>
+          <FontAwesome
+            name="thumb-tack"
+            size={20}
+            color={habit.pinned ? "#2196F3" : "#888"}
+            style={habit.pinned ? styles.pinnedIcon : {}}
+          />
+          <Text style={habit.pinned ? styles.pinnedText : styles.unpinnedText}>
+            {habit.pinned ? "Đã ghim" : "Ghim"}
+          </Text>
+        </TouchableOpacity>
         {isEditing ? (
           <>
             <TextInput
@@ -209,55 +398,57 @@ const HabitDetailScreen = ({ route, navigation }) => {
           </>
         )}
       </View>
-
       <View style={styles.scheduleSection}>
         <Text style={styles.sectionTitle}>Schedule</Text>
         <View style={styles.daysContainer}>
           {isEditing
             ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                
                 (day, index) => (
-                  <TouchableOpacity
-                    key={day}
-                    style={[
-                      styles.dayIndicator,
-                      editSchedule[index] && styles.activeDayIndicator,
-                    ]}
-                    onPress={() => handleDayToggle(index)}
-                  >
-                    <Text
+                    <TouchableOpacity
+                      key={day}
                       style={[
-                        styles.dayIndicatorText,
-                        editSchedule[index] && styles.activeDayIndicatorText,
+                        styles.dayIndicator,
+                        editSchedule[index] && styles.activeDayIndicator,
                       ]}
+                      onPress={() => handleDayToggle(index)}
                     >
-                      {day}
-                    </Text>
-                  </TouchableOpacity>
-                )
+                      <Text
+                        style={[
+                          styles.dayIndicatorText,
+                          editSchedule[index] && styles.activeDayIndicatorText,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+              
               )
             : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                
                 (day, index) => (
-                  <View
-                    key={day}
-                    style={[
-                      styles.dayIndicator,
-                      habit.schedule[index] && styles.activeDayIndicator,
-                    ]}
-                  >
-                    <Text
+                    <View
+                      key={day}
                       style={[
-                        styles.dayIndicatorText,
-                        habit.schedule[index] && styles.activeDayIndicatorText,
+                        styles.dayIndicator,
+                        habit.schedule[index] && styles.activeDayIndicator,
                       ]}
                     >
-                      {day}
-                    </Text>
-                  </View>
-                )
+                      <Text
+                        style={[
+                          styles.dayIndicatorText,
+                          habit.schedule[index] && styles.activeDayIndicatorText,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </View>
+                  )
+              
               )}
         </View>
       </View>
-
       <View style={styles.progressSection}>
         <Text style={styles.sectionTitle}>Progress</Text>
         {renderCalendar()}
@@ -267,7 +458,6 @@ const HabitDetailScreen = ({ route, navigation }) => {
           <Text style={styles.statsText}>{getCompletionTimeStats()}</Text>
         </View>
       )}
-
       <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
         <Text style={styles.deleteButtonText}>Delete Habit</Text>
       </TouchableOpacity>
@@ -283,6 +473,54 @@ const HabitDetailScreen = ({ route, navigation }) => {
           <Text style={styles.updateButtonText}>Update Habit</Text>
         </TouchableOpacity>
       )}
+      <Modal
+        visible={showModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {selectedDate ? new Date(selectedDate).toLocaleDateString() : ""}
+            </Text>
+
+            <TextInput
+              style={[styles.input, styles.noteInput]}
+              value={note}
+              onChangeText={setNote}
+              placeholder="Add a note..."
+              multiline
+            />
+
+            <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+              <Text style={styles.photoButtonText}>
+                {photo ? "Change Photo" : "Add Photo"}
+              </Text>
+            </TouchableOpacity>
+
+            {photo && (
+              <Image source={{ uri: photo }} style={styles.photoPreview} />
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.completeButton]}
+                onPress={handleComplete}
+              >
+                <Text style={styles.modalButtonText}>Complete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -298,8 +536,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   header: {
+    flexDirection: "column",
     padding: 16,
     backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
     marginBottom: 16,
   },
   title: {
@@ -405,17 +646,142 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#fff",
   },
-  statsContainer: {
-    backgroundColor: "#fffbe6",
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  noteInput: {
+    height: 100,
+    textAlignVertical: "top",
+    marginBottom: 15,
+  },
+  photoButton: {
+    backgroundColor: "#4CAF50",
     padding: 12,
-    margin: 16,
     borderRadius: 8,
     alignItems: "center",
+    marginBottom: 15,
   },
-  statsText: {
-    color: "#b8860b",
+  photoButtonText: {
+    color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  photoPreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  cancelButton: {
+    backgroundColor: "#ff5252",
+  },
+  completeButton: {
+    backgroundColor: "#4CAF50",
+  },
+  modalButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  indicatorsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 5,
+  },
+  indicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#ccc",
+  },
+  noteIndicator: {
+    backgroundColor: "#4CAF50",
+  },
+  photoIndicator: {
+    backgroundColor: "#2196F3",
+  },
+  savedEntriesContainer: {
+    padding: 16,
+    height: 300, // Chiều cao cố định cho container
+  },
+  recentEntriesScroll: {
+    flex: 1,
+  },
+  entryContainer: {
+    marginBottom: 16,
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  entryDate: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  entryNote: {
+    fontSize: 14,
+    color: "#666",
+  },
+  entryPhoto: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  pinButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    padding: 8,
+    marginBottom: 8,
+  },
+  pinnedIcon: {
+    transform: [{ rotate: "45deg" }],
+  },
+  pinnedText: {
+    marginLeft: 8,
+    color: "#2196F3",
+    fontWeight: "bold",
+  },
+  unpinnedText: {
+    marginLeft: 8,
+    color: "#888",
   },
 });
 

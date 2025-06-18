@@ -9,11 +9,29 @@ import {
 } from "react-native";
 import { habitApi } from "../services/api";
 import HabitCard from "../components/HabitCard";
-import { getHabits } from "../utils/storage";
+import { getHabits, saveHabits } from "../utils/storage";
+import MiniCalendarWidget from "../components/MiniCalenderWidget";
 
 const HomeScreen = ({ navigation }) => {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Xử lý khi người dùng ghim/bỏ ghim thói quen
+  const handleTogglePin = async (habitId) => {
+    // Cập nhật UI ngay lập tức
+    const updatedHabits = habits.map((habit) =>
+      habit.id === habitId ? { ...habit, pinned: !habit.pinned } : habit
+    );
+
+    setHabits(updatedHabits);
+
+    // Lưu lại trạng thái đã cập nhật
+    try {
+      await saveHabits(updatedHabits);
+    } catch (error) {
+      console.error("Error updating pin status:", error);
+    }
+  };
 
   // const fetchHabits = async () => {
   //   try {
@@ -30,7 +48,16 @@ const HomeScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const data = await getHabits();
-      setHabits(data);
+      // Đảm bảo tất cả thói quen đều có thuộc tính pinned
+      const habitsWithPinnedProperty = data.map((habit) => ({
+        ...habit,
+        pinned: habit.pinned || false, // Thêm thuộc tính pinned nếu chưa có
+      }));
+
+      // Lưu lại dữ liệu đã cập nhật
+      await saveHabits(habitsWithPinnedProperty);
+
+      setHabits(habitsWithPinnedProperty);
     } catch (error) {
       console.error("Error fetching habits:", error);
     } finally {
@@ -46,11 +73,16 @@ const HomeScreen = ({ navigation }) => {
 
     return unsubscribe;
   }, [navigation]);
-
   const renderItem = ({ item }) => (
     <HabitCard
       habit={item}
-      onPress={() => navigation.navigate("HabitDetail", { habitId: item.id })}
+      onPress={() =>
+        navigation.navigate("HabitDetail", {
+          habitId: item.id,
+          onPinToggled: handleTogglePin,
+        })
+      }
+      onTogglePin={() => handleTogglePin(item.id)}
     />
   );
 
@@ -61,11 +93,17 @@ const HomeScreen = ({ navigation }) => {
       </View>
     );
   }
+  // Sắp xếp thói quen: đưa những thói quen được ghim lên đầu danh sách
+  const sortedHabits = [...habits].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1; // a được ghim, b không -> a lên đầu
+    if (!a.pinned && b.pinned) return 1; // b được ghim, a không -> b lên đầu
+    return 0; // không thay đổi thứ tự
+  });
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={habits}
+        data={sortedHabits}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
@@ -76,6 +114,7 @@ const HomeScreen = ({ navigation }) => {
       >
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
+      <MiniCalendarWidget habits={habits} />
     </View>
   );
 };
