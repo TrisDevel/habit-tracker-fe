@@ -105,6 +105,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
       Alert.alert("Lỗi", "Không thể cập nhật trạng thái ghim");
     }
   };
+
   const handleDatePress = async (date) => {
     // Set selected date and show modal with existing note/photo if any
     setSelectedDate(date);
@@ -120,24 +121,23 @@ const HabitDetailScreen = ({ route, navigation }) => {
         return;
       }
 
-      // Create updated habit data
-    try {
       let updatedCompletedDates, updatedCompletionTimes;
-      if (habit.completedDates.includes(date)) {
-        updatedCompletedDates = habit.completedDates.filter((d) => d !== date);
+      if (habit.completedDates.includes(selectedDate)) {
+        updatedCompletedDates = habit.completedDates.filter(
+          (d) => d !== selectedDate
+        );
         updatedCompletionTimes = { ...habit.completionTimes };
-        delete updatedCompletionTimes[date];
+        delete updatedCompletionTimes[selectedDate];
       } else {
-        updatedCompletedDates = [...habit.completedDates, date];
+        updatedCompletedDates = [...habit.completedDates, selectedDate];
         updatedCompletionTimes = {
           ...habit.completionTimes,
-          [date]: getTimeOfDay(),
+          [selectedDate]: getTimeOfDay(),
         };
       }
       const updatedHabit = {
         ...habit,
         completionTimes: updatedCompletionTimes,
-      };
         notes: {
           ...(habit.notes || {}),
           [selectedDate]: note || undefined, // Only add if note exists
@@ -146,9 +146,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
           ...(habit.photos || {}),
           [selectedDate]: photo || undefined, // Only add if photo exists
         },
-        completedDates: habit.completedDates.includes(selectedDate)
-          ? habit.completedDates.filter((d) => d !== selectedDate)
-          : [...habit.completedDates, selectedDate],
+        completedDates: updatedCompletedDates,
       };
 
       console.log("Sending update:", {
@@ -261,15 +259,13 @@ const HabitDetailScreen = ({ route, navigation }) => {
   const handleUpdate = async () => {
     try {
       const updatedHabit = {
-       
         ...habit,
-       
+
         name: editName,
-       
+
         description: editDescription,
-       
+
         schedule: editSchedule,
-     ,
       };
       const response = await habitApi.updateHabit(updatedHabit);
       setHabit(response);
@@ -454,49 +450,45 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <View style={styles.daysContainer}>
           {isEditing
             ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                
                 (day, index) => (
-                    <TouchableOpacity
-                      key={day}
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.dayIndicator,
+                      editSchedule[index] && styles.activeDayIndicator,
+                    ]}
+                    onPress={() => handleDayToggle(index)}
+                  >
+                    <Text
                       style={[
-                        styles.dayIndicator,
-                        editSchedule[index] && styles.activeDayIndicator,
+                        styles.dayIndicatorText,
+                        editSchedule[index] && styles.activeDayIndicatorText,
                       ]}
-                      onPress={() => handleDayToggle(index)}
                     >
-                      <Text
-                        style={[
-                          styles.dayIndicatorText,
-                          editSchedule[index] && styles.activeDayIndicatorText,
-                        ]}
-                      >
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-              
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                )
               )
             : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                
                 (day, index) => (
-                    <View
-                      key={day}
+                  <View
+                    key={day}
+                    style={[
+                      styles.dayIndicator,
+                      habit.schedule[index] && styles.activeDayIndicator,
+                    ]}
+                  >
+                    <Text
                       style={[
-                        styles.dayIndicator,
-                        habit.schedule[index] && styles.activeDayIndicator,
+                        styles.dayIndicatorText,
+                        habit.schedule[index] && styles.activeDayIndicatorText,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.dayIndicatorText,
-                          habit.schedule[index] && styles.activeDayIndicatorText,
-                        ]}
-                      >
-                        {day}
-                      </Text>
-                    </View>
-                  )
-              
+                      {day}
+                    </Text>
+                  </View>
+                )
               )}
         </View>
       </View>
