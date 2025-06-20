@@ -72,6 +72,14 @@ const HabitDetailScreen = ({ route, navigation }) => {
     fetchHabitDetails();
   };
 
+  // Helper to get time of day
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "morning";
+    if (hour < 18) return "afternoon";
+    return "evening";
+  };
+
   // Xử lý ghim/bỏ ghim thói quen
   const handleTogglePin = async () => {
     try {
@@ -161,9 +169,23 @@ const HabitDetailScreen = ({ route, navigation }) => {
         return;
       }
 
-      // Create updated habit data
+      let updatedCompletedDates, updatedCompletionTimes;
+      if (habit.completedDates.includes(selectedDate)) {
+        updatedCompletedDates = habit.completedDates.filter(
+          (d) => d !== selectedDate
+        );
+        updatedCompletionTimes = { ...habit.completionTimes };
+        delete updatedCompletionTimes[selectedDate];
+      } else {
+        updatedCompletedDates = [...habit.completedDates, selectedDate];
+        updatedCompletionTimes = {
+          ...habit.completionTimes,
+          [selectedDate]: getTimeOfDay(),
+        };
+      }
       const updatedHabit = {
         ...habit,
+        completionTimes: updatedCompletionTimes,
         notes: {
           ...(habit.notes || {}),
           [selectedDate]: note || undefined, // Only add if note exists
@@ -172,9 +194,7 @@ const HabitDetailScreen = ({ route, navigation }) => {
           ...(habit.photos || {}),
           [selectedDate]: photo || undefined, // Only add if photo exists
         },
-        completedDates: habit.completedDates.includes(selectedDate)
-          ? habit.completedDates.filter((d) => d !== selectedDate)
-          : [...habit.completedDates, selectedDate],
+        completedDates: updatedCompletedDates,
       };
 
       console.log("Sending update:", {
@@ -288,8 +308,11 @@ const HabitDetailScreen = ({ route, navigation }) => {
     try {
       const updatedHabit = {
         ...habit,
+
         name: editName,
+
         description: editDescription,
+
         schedule: editSchedule,
       };
       const response = await habitApi.updateHabit(updatedHabit);
@@ -321,6 +344,25 @@ const HabitDetailScreen = ({ route, navigation }) => {
       </View>
     );
   }
+
+  const getCompletionTimeStats = () => {
+    if (!habit.completionTimes) return null;
+    const counts = { morning: 0, afternoon: 0, evening: 0 };
+    Object.values(habit.completionTimes).forEach((t) => {
+      if (counts[t] !== undefined) counts[t]++;
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total === 0) return null;
+    const maxTime = Object.keys(counts).reduce((a, b) =>
+      counts[a] > counts[b] ? a : b
+    );
+    const percent = Math.round((counts[maxTime] / total) * 100);
+    let label = "";
+    if (maxTime === "morning") label = "morning";
+    else if (maxTime === "afternoon") label = "afternoon";
+    else label = "evening";
+    return `You usually complete at ${label} (${percent}%)`;
+  };
 
   if (!habit) {
     return (
@@ -518,6 +560,11 @@ const HabitDetailScreen = ({ route, navigation }) => {
         <Text style={styles.statsButtonText}>View Statistics</Text>
       </TouchableOpacity>
 
+      {getCompletionTimeStats() && (
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsText}>{getCompletionTimeStats()}</Text>
+        </View>
+      )}
       <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
         <Text style={styles.deleteButtonText}>Delete Habit</Text>
       </TouchableOpacity>
